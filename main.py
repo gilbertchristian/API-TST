@@ -51,6 +51,7 @@ app = FastAPI()
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
 
+def verify_token(user_token):
     return pwd_context.verify(user_token, access_code)
 
 def get_password_hash(password):
