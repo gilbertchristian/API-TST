@@ -20,11 +20,9 @@ with open("menu.json", "r") as read_file:
     data = json.load(read_file)
 app = FastAPI()
 
-fake_users_db = {
+list_of_users = {
     "asdf": {
         "username": "asdf",
-        # "full_name": "John Doe",
-        # "email": "johndoe@example.com",
         "hashed_password": "$2b$12$kJZRxYUv1s.Mi.1TK.c/7e5CiK39PKfLilwRNPfWC6uRn/BZp7v3i",
         "disabled": False,
     }
@@ -39,8 +37,6 @@ class TokenData(BaseModel):
 
 class User(BaseModel):
     username: str
-    email: Optional[str] = None
-    full_name: Optional[str] = None
     disabled: Optional[bool] = None
 
 class UserInDB(User):
@@ -57,21 +53,19 @@ def verify_password(plain_password, hashed_password):
 
 def get_password_hash(password):
     return pwd_context.hash(password)
-print(get_password_hash("asdf"))
 
 def get_user(db, username: str):
     if username in db:
         user_dict = db[username]
         return UserInDB(**user_dict)
-
-def authenticate_user(fake_db, username: str, password: str):
-    user = get_user(fake_db, username)
+ 
+def authenticate_user(list, username: str, password: str):
+    user = get_user(list, username)
     if not user:
         return False
     if not verify_password(password, user.hashed_password):
         return False
     return user
-
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
@@ -82,7 +76,6 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
-
 
 async def get_current_user(token: str = Depends(oauth2_scheme)):
     credentials_exception = HTTPException(
@@ -98,21 +91,19 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         token_data = TokenData(username=username)
     except JWTError:
         raise credentials_exception
-    user = get_user(fake_users_db, username=token_data.username)
+    user = get_user(list_of_users, username=token_data.username)
     if user is None:
         raise credentials_exception
     return user
-
 
 async def get_current_active_user(current_user: User = Depends(get_current_user)):
     if current_user.disabled:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
 
-
 @app.post("/token", response_model=Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
-    user = authenticate_user(fake_users_db, form_data.username, form_data.password)
+    user = authenticate_user(list_of_users, form_data.username, form_data.password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -125,30 +116,15 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
-# @app.get("/users/me/", response_model=User)
-# async def read_users_me(current_user: User = Depends(get_current_active_user)):
-#     return current_user
-
-# @app.get("/users/me/items/")
-# async def read_own_items(current_user: User = Depends(get_current_active_user)):
-#     return [{"item_id": "Foo", "owner": current_user.username}]
-
-# @app.get('/')
-# def Root():
-#     return{'Menu':'item'}
-
 @app.get('/menu/{item_id}')
-async def read_menu(item_id: int, current_user: User = Depends(get_current_active_user)):
-    for menu_item in data['menu']:
-        if menu_item['id'] == item_id:
-            return menu_item
-    raise HTTPException(
-        status_code=404, detail=f'Item not found'
-    )
-
-# @app.get('/menu')
-async def read_all_menu():
-        return data
+async def read_menu():
+    return data
+    # for menu_item in data['menu']:
+    #     if menu_item['id'] == item_id:
+    #         return menu_item
+    # raise HTTPException(
+    #     status_code=404, detail=f'Item not found'
+    # )
 
 @app.post('/menu')
 async def add_menu(name: str, current_user: User = Depends(get_current_active_user)):
@@ -160,6 +136,7 @@ async def add_menu(name: str, current_user: User = Depends(get_current_active_us
 
     with open("menu.json", "w") as write_file:
         json.dump(data,write_file,indent=4)
+    return{"message": "Data added successfully"}
     write_file.close()
 
 @app.put('/menu/{item_id}')
