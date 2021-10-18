@@ -51,6 +51,8 @@ app = FastAPI()
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
 
+    return pwd_context.verify(user_token, access_code)
+
 def get_password_hash(password):
     return pwd_context.hash(password)
 
@@ -59,11 +61,11 @@ def get_user(db, username: str):
         user_dict = db[username]
         return UserInDB(**user_dict)
  
-def authenticate_user(list, username: str, password: str):
+def authenticate_user(list, username: str, user_token: str):
     user = get_user(list, username)
     if not user:
         return False
-    if not verify_password(password, user.hashed_password):
+    if not verify_token(user_token):
         return False
     return user
 
@@ -119,12 +121,6 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 @app.get('/menu/{item_id}')
 async def read_menu():
     return data
-    # for menu_item in data['menu']:
-    #     if menu_item['id'] == item_id:
-    #         return menu_item
-    # raise HTTPException(
-    #     status_code=404, detail=f'Item not found'
-    # )
 
 @app.post('/menu')
 async def add_menu(name: str, current_user: User = Depends(get_current_active_user)):
