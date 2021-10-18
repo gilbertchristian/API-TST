@@ -51,9 +51,6 @@ app = FastAPI()
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
 
-def verify_token(user_token):
-    return pwd_context.verify(user_token, access_code)
-
 def get_password_hash(password):
     return pwd_context.hash(password)
 
@@ -62,11 +59,11 @@ def get_user(db, username: str):
         user_dict = db[username]
         return UserInDB(**user_dict)
  
-def authenticate_user(list, username: str, user_token: str):
+def authenticate_user(list, username: str, password: str):
     user = get_user(list, username)
     if not user:
         return False
-    if not verify_token(user_token):
+    if not verify_password(password, user.hashed_password):
         return False
     return user
 
