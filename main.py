@@ -12,33 +12,30 @@ from pydantic import BaseModel
 
 # to get a string like this run:
 # openssl rand -hex 32
-SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
+SECRET_KEY = "gibettsukalari"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
-
-
-fake_users_db = {
-    "johndoe": {
-        "username": "johndoe",
-        "full_name": "John Doe",
-        "email": "johndoe@example.com",
-        "hashed_password": "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW",
-        "disabled": False,
-    }
-}
 
 with open("menu.json", "r") as read_file:
     data = json.load(read_file)
 app = FastAPI()
 
+fake_users_db = {
+    "asdf": {
+        "username": "asdf",
+        # "full_name": "John Doe",
+        # "email": "johndoe@example.com",
+        "hashed_password": "$2b$12$kJZRxYUv1s.Mi.1TK.c/7e5CiK39PKfLilwRNPfWC6uRn/BZp7v3i",
+        "disabled": False,
+    }
+}
+
 class Token(BaseModel):
     access_token: str
     token_type: str
 
-
 class TokenData(BaseModel):
     username: Optional[str] = None
-
 
 class User(BaseModel):
     username: str
@@ -46,10 +43,8 @@ class User(BaseModel):
     full_name: Optional[str] = None
     disabled: Optional[bool] = None
 
-
 class UserInDB(User):
     hashed_password: str
-
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -57,21 +52,17 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 app = FastAPI()
 
-
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
 
-
 def get_password_hash(password):
     return pwd_context.hash(password)
-
-print(get_password_hash("secret"))
+print(get_password_hash("asdf"))
 
 def get_user(db, username: str):
     if username in db:
         user_dict = db[username]
         return UserInDB(**user_dict)
-
 
 def authenticate_user(fake_db, username: str, password: str):
     user = get_user(fake_db, username)
@@ -134,21 +125,20 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
-@app.get("/users/me/", response_model=User)
-async def read_users_me(current_user: User = Depends(get_current_active_user)):
-    return current_user
+# @app.get("/users/me/", response_model=User)
+# async def read_users_me(current_user: User = Depends(get_current_active_user)):
+#     return current_user
 
+# @app.get("/users/me/items/")
+# async def read_own_items(current_user: User = Depends(get_current_active_user)):
+#     return [{"item_id": "Foo", "owner": current_user.username}]
 
-@app.get("/users/me/items/")
-async def read_own_items(current_user: User = Depends(get_current_active_user)):
-    return [{"item_id": "Foo", "owner": current_user.username}]
-    
-@app.get('/')
-def Root():
-    return{'Menu':'item'}
+# @app.get('/')
+# def Root():
+#     return{'Menu':'item'}
 
 @app.get('/menu/{item_id}')
-async def read_menu(item_id: int):
+async def read_menu(item_id: int, current_user: User = Depends(get_current_active_user)):
     for menu_item in data['menu']:
         if menu_item['id'] == item_id:
             return menu_item
@@ -156,12 +146,12 @@ async def read_menu(item_id: int):
         status_code=404, detail=f'Item not found'
     )
 
-@app.get('/menu')
+# @app.get('/menu')
 async def read_all_menu():
         return data
 
 @app.post('/menu')
-async def add_menu(name: str):
+async def add_menu(name: str, current_user: User = Depends(get_current_active_user)):
     id=1
     if(len(data["menu"])>0):
         id=data["menu"][len(data["menu"])-1]["id"]+1
@@ -173,7 +163,7 @@ async def add_menu(name: str):
     write_file.close()
 
 @app.put('/menu/{item_id}')
-async def update_menu(item_id: int, name:str):
+async def update_menu(item_id: int, name:str, current_user: User = Depends(get_current_active_user)):
     for menu_item in data['menu']:
         if menu_item['id'] == item_id:
             menu_item['name']=name
@@ -182,7 +172,7 @@ async def update_menu(item_id: int, name:str):
             return{"message": "Data updated successfully"}
  
 @app.delete('/menu/{item_id}')
-async def delete_menu(item_id: int):
+async def delete_menu(item_id: int, current_user: User = Depends(get_current_active_user)):
     for menu_item in data['menu']:
         if menu_item['id'] == item_id:
             data['menu'].remove(menu_item)
