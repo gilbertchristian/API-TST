@@ -101,6 +101,10 @@ async def get_current_active_user(current_user: User = Depends(get_current_user)
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
 
+@app.get('/')
+def show_owner():
+    return{"18219005 - Gilbert Christian Sinaga"}
+
 @app.post("/token", response_model=Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
     user = authenticate_user(list_of_users, form_data.username, form_data.password)
